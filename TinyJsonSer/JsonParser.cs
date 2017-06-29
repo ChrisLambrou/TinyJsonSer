@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace TinyJsonSer
@@ -28,6 +29,7 @@ namespace TinyJsonSer
                 case JsonValueType.String:
                     return ParseString(charReader);
                 case JsonValueType.Number:
+                    return ParseNumber(charReader);
                 case JsonValueType.Object:
                 case JsonValueType.Array:
                     return ParseArray(charReader);
@@ -42,6 +44,27 @@ namespace TinyJsonSer
                 default:
                     throw new ArgumentOutOfRangeException(nameof(valueType), valueType, null);
             }
+        }
+
+        private static readonly char[] _numerics = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.'};
+
+        private JsonValue ParseNumber(ICharReader charReader)
+        {
+            var sb = new StringBuilder();
+            var peek = charReader.Peek();
+            if (peek.Value == '-')
+            {
+                sb.Append(charReader.Read());
+                peek = charReader.Peek();
+            }
+
+            while (peek.HasValue && _numerics.Contains(peek.Value))
+            {
+                sb.Append(charReader.Read());
+                peek = charReader.Peek();
+            }
+
+            return new JsonNumber(sb.ToString());
         }
 
         private JsonValue ParseArray(ICharReader charReader)
@@ -247,6 +270,16 @@ namespace TinyJsonSer
         public JsonString(string value)
         {
             Value = value;
+        }
+    }
+
+    internal class JsonNumber : JsonValue
+    {
+        public string StringRepresentation { get; }
+
+        public JsonNumber(string stringRepresentation)
+        {
+            StringRepresentation = stringRepresentation;
         }
     }
 

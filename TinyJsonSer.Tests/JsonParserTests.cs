@@ -37,5 +37,14 @@ namespace TinyJsonSer.Tests
             Assert.NotNull(array);
             CollectionAssert.AreEqual(new[] { "1", "2", "3" }, array.Items.OfType<JsonString>().Select(s => s.Value));
         }
+
+        [Test]
+        public void NumberParsing()
+        {
+            var parser = new JsonParser();
+            var number = parser.Parse("-15.2") as JsonNumber;
+            Assert.NotNull(number);
+            Assert.AreEqual("-15.2", number.StringRepresentation);
+        }
     }
 }
