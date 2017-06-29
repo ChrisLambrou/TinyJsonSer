@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace TinyJsonSer
 {
@@ -24,6 +26,7 @@ namespace TinyJsonSer
             switch (valueType)
             {
                 case JsonValueType.String:
+                    return ParseString(charReader);
                 case JsonValueType.Number:
                 case JsonValueType.Object:
                 case JsonValueType.Array:
@@ -38,6 +41,83 @@ namespace TinyJsonSer
                 default:
                     throw new ArgumentOutOfRangeException(nameof(valueType), valueType, null);
             }
+        }
+
+        private JsonValue ParseString(ICharReader charReader)
+        {
+            var delimiter = charReader.Read();
+            if (delimiter != '\'' && delimiter != '"') throw new JsonParseException("Strings must be delimiated with either single or double quotes");
+
+            var sb = new StringBuilder();
+            var c = GetNextStringCharacter(charReader);
+            while (c != delimiter)
+            {
+                sb.Append(c);
+                c = GetNextStringCharacter(charReader);
+            }
+
+            return new JsonString(sb.ToString());
+        }
+
+        private char? GetNextStringCharacter(ICharReader charReader)
+        {
+            var c = charReader.Read();
+            if (!c.HasValue) throw new JsonParseException("Unterminated string");
+            if (CharRequiresEscapeInString(c.Value)) throw new JsonParseException($"Unescaped '{c}' in string");
+            if (c != '\\') return c;
+
+            c = charReader.Read();
+            if (!c.HasValue) throw new JsonParseException("Unterminated string");
+
+            if (_shortEscapeDecodables.TryGetValue(c.Value, out char fromShortCode))
+            {
+                return fromShortCode;
+            }
+
+            if (c == 'u') return GetUnicodeSymbol(charReader);
+
+            throw new JsonParseException("Unrecognised escape sequence '\\{c}'");
+        }
+
+        private char? GetUnicodeSymbol(ICharReader charReader)
+        {
+            var sb = new StringBuilder(8);
+            for (var i = 0; i < 4; i++)
+            {
+                var c = charReader.Read();
+                if (!c.HasValue) throw new JsonParseException("Unterminated string");
+                if (char.IsDigit(c.Value) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
+                {
+                    sb.Append(c.Value);
+                }
+                else
+                {
+                    throw new JsonParseException($"Invalid character '{c.Value}' in hexidecimal unicode notation");
+                }
+
+            }
+
+            var hexString = sb.ToString();
+            var sChar = (ushort)(Convert.ToUInt16(hexString.Substring(0, 2), 16) << 8);
+            sChar += Convert.ToUInt16(hexString.Substring(2, 2), 16);
+            return Convert.ToChar(sChar);
+        }
+
+        private static readonly Dictionary<char, char> _shortEscapeDecodables
+            = new Dictionary<char, char>
+            {
+                {'\"', '"'},
+                {'\\', '\\'},
+                {'b', '\b'},
+                {'f', '\f'},
+                {'n', '\n'},
+                {'r', '\r'},
+                {'t', '\t'}
+            };
+
+        private bool CharRequiresEscapeInString(char c)
+        {
+            return c <= '\u001f';
         }
 
         private JsonValue ParseTrue(ICharReader charReader)
@@ -130,6 +210,16 @@ namespace TinyJsonSer
     internal class JsonNull : JsonValue
     {
 
+    }
+
+    internal class JsonString : JsonValue
+    {
+        public string Value { get; }
+
+        public JsonString(string value)
+        {
+            Value = value;
+        }
     }
 
     enum JsonValueType { String, Number, Object, Array, True, False, Null, Unrecognised }
