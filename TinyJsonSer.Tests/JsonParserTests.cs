@@ -46,5 +46,19 @@ namespace TinyJsonSer.Tests
             Assert.NotNull(number);
             Assert.AreEqual("-15.2", number.StringRepresentation);
         }
+
+        [Test]
+        public void ObjectParsing()
+        {
+            var parser = new JsonParser();
+            var obj = parser.Parse("{ 'Field1' : 2, \"Field2\" : 'payload' }") as JsonObject;
+            Assert.NotNull(obj);
+            var field1 = obj.Members["Field1"] as JsonNumber;
+            var field2 = obj.Members["Field2"] as JsonString;
+            Assert.NotNull(field1);
+            Assert.NotNull(field2);
+            Assert.AreEqual("2", field1.StringRepresentation);
+            Assert.AreEqual("payload", field2.Value);
+        }
     }
 }

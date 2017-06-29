@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 
@@ -31,6 +32,7 @@ namespace TinyJsonSer
                 case JsonValueType.Number:
                     return ParseNumber(charReader);
                 case JsonValueType.Object:
+                    return ParseObject(charReader);
                 case JsonValueType.Array:
                     return ParseArray(charReader);
                 case JsonValueType.True:
@@ -44,6 +46,38 @@ namespace TinyJsonSer
                 default:
                     throw new ArgumentOutOfRangeException(nameof(valueType), valueType, null);
             }
+        }
+
+        private JsonValue ParseObject(ICharReader charReader)
+        {
+            charReader.Read(); // {
+            var members = new Dictionary<string, JsonValue>();
+
+            AdvanceWhitespace(charReader);
+            var peek = charReader.Peek();
+            if (!peek.HasValue) throw new JsonParseException("Unterminated object");
+
+            while (peek.Value != '}')
+            {
+                var name = ParseString(charReader);
+                AdvanceWhitespace(charReader);
+                var separator = charReader.Read();
+                if(separator != ':') throw new JsonParseException("expected ':' after member name definition");
+                AdvanceWhitespace(charReader);
+                var value = ParseJsonValue(charReader);
+                members.Add(name.Value, value);
+                AdvanceWhitespace(charReader);
+                peek = charReader.Peek();
+                if(!peek.HasValue) throw new JsonParseException("Unterminated object");
+                if (peek.Value == ',')
+                {
+                    peek = charReader.Read();
+                    AdvanceWhitespace(charReader);
+                }
+            }
+            charReader.Read(); // {
+
+            return new JsonObject(members);
         }
 
         private static readonly char[] _numerics = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.'};
@@ -84,7 +118,7 @@ namespace TinyJsonSer
             return new JsonArray(items);
         }
 
-        private JsonValue ParseString(ICharReader charReader)
+        private JsonString ParseString(ICharReader charReader)
         {
             var delimiter = charReader.Read();
             if (delimiter != '\'' && delimiter != '"') throw new JsonParseException("Strings must be delimiated with either single or double quotes");
@@ -228,12 +262,12 @@ namespace TinyJsonSer
 
     internal class JsonObject : JsonValue
     {
-        public IList<JsonNameValuePair> Members { get; }
-
-        public JsonObject(IList<JsonNameValuePair> members)
+        public JsonObject(Dictionary<string, JsonValue> members)
         {
             Members = members;
         }
+
+        public Dictionary<string, JsonValue> Members { get; }
     }
 
     internal class JsonNameValuePair
