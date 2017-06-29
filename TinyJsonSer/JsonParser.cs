@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace TinyJsonSer
@@ -14,11 +13,12 @@ namespace TinyJsonSer
         public JsonValue Parse(string json)
         {
             var reader = new StringCharReader(json);
-            return ParseNextJsonValue(reader);
+            return ParseJsonValue(reader);
         }
 
-        private JsonValue ParseNextJsonValue(ICharReader charReader)
+        private JsonValue ParseJsonValue(ICharReader charReader)
         {
+            AdvanceWhitespace(charReader);
             var leadingCharacter = charReader.Peek();
             if (!leadingCharacter.HasValue) throw new JsonParseException("Unexpected end of stream");
             var valueType = IdentifyValueType(leadingCharacter.Value);
@@ -30,6 +30,7 @@ namespace TinyJsonSer
                 case JsonValueType.Number:
                 case JsonValueType.Object:
                 case JsonValueType.Array:
+                    return ParseArray(charReader);
                 case JsonValueType.True:
                     return ParseTrue(charReader);
                 case JsonValueType.False:
@@ -41,6 +42,23 @@ namespace TinyJsonSer
                 default:
                     throw new ArgumentOutOfRangeException(nameof(valueType), valueType, null);
             }
+        }
+
+        private JsonValue ParseArray(ICharReader charReader)
+        {
+            charReader.Read(); // [
+            AdvanceWhitespace(charReader);
+            var items = new List<JsonValue>();
+            while (charReader.Peek() != ']')
+            {
+                items.Add(ParseJsonValue(charReader));
+                AdvanceWhitespace(charReader);
+                if (charReader.Peek() != ',') break;
+                charReader.Read();
+                AdvanceWhitespace(charReader);
+            }
+            charReader.Read(); // ]
+            return new JsonArray(items);
         }
 
         private JsonValue ParseString(ICharReader charReader)
@@ -165,6 +183,16 @@ namespace TinyJsonSer
 
             return JsonValueType.Unrecognised;
         }
+
+        private void AdvanceWhitespace(ICharReader charReader)
+        {
+            var peek = charReader.Peek();
+            while (peek.HasValue && char.IsWhiteSpace(peek.Value))
+            {
+                charReader.Read();
+                peek = charReader.Peek();
+            }
+        }
     }
 
     internal class JsonParseException : Exception
@@ -219,6 +247,16 @@ namespace TinyJsonSer
         public JsonString(string value)
         {
             Value = value;
+        }
+    }
+
+    internal class JsonArray : JsonValue
+    {
+        public IList<JsonValue> Items { get; }
+
+        public JsonArray(IList<JsonValue> items)
+        {
+            Items = items;
         }
     }
 
