@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using NUnit.Framework;
 
 namespace TinyJsonSer.Tests
@@ -53,8 +51,8 @@ namespace TinyJsonSer.Tests
             var parser = new JsonParser();
             var obj = parser.Parse("{ 'Field1' : 2, \"Field2\" : 'payload' }") as JsonObject;
             Assert.NotNull(obj);
-            var field1 = obj.Members["Field1"] as JsonNumber;
-            var field2 = obj.Members["Field2"] as JsonString;
+            var field1 = obj["Field1"] as JsonNumber;
+            var field2 = obj["Field2"] as JsonString;
             Assert.NotNull(field1);
             Assert.NotNull(field2);
             Assert.AreEqual("2", field1.StringRepresentation);

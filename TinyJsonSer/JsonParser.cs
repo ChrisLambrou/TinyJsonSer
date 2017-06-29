@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 
@@ -50,49 +49,52 @@ namespace TinyJsonSer
 
         private JsonValue ParseObject(ICharReader charReader)
         {
-            charReader.Read(); // {
-            var members = new Dictionary<string, JsonValue>();
+            var members = new List<JsonObjectMember>();
 
+            charReader.Read(); // {
             AdvanceWhitespace(charReader);
+
             var peek = charReader.Peek();
             if (!peek.HasValue) throw new JsonParseException("Unterminated object");
 
             while (peek.Value != '}')
             {
-                var name = ParseString(charReader);
-                AdvanceWhitespace(charReader);
-                var separator = charReader.Read();
-                if(separator != ':') throw new JsonParseException("expected ':' after member name definition");
-                AdvanceWhitespace(charReader);
-                var value = ParseJsonValue(charReader);
-                members.Add(name.Value, value);
-                AdvanceWhitespace(charReader);
-                peek = charReader.Peek();
-                if(!peek.HasValue) throw new JsonParseException("Unterminated object");
-                if (peek.Value == ',')
+                if (members.Any())
                 {
-                    peek = charReader.Read();
+                    if(peek.Value != ',') throw new JsonParseException("Missing comma separater between object members.");
+                    charReader.Read();
                     AdvanceWhitespace(charReader);
                 }
+                var member = ParseObjectMember(charReader);
+                members.Add(member);
+                peek = charReader.Peek();
+                if(!peek.HasValue) throw new JsonParseException("Unterminated object");
             }
-            charReader.Read(); // {
+            charReader.Read(); // }
 
             return new JsonObject(members);
         }
 
-        private static readonly char[] _numerics = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.'};
+        private JsonObjectMember ParseObjectMember(ICharReader charReader)
+        {
+            var name = ParseString(charReader);
+            AdvanceWhitespace(charReader);
+            var separator = charReader.Read();
+            if (separator != ':') throw new JsonParseException("expected ':' after member name definition");
+            AdvanceWhitespace(charReader);
+            var value = ParseJsonValue(charReader);
+            AdvanceWhitespace(charReader);
+            return new JsonObjectMember(name.Value, value);
+        }
+
+        private static readonly char[] Numerics = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'e' ,'E', '-'};
 
         private JsonValue ParseNumber(ICharReader charReader)
         {
             var sb = new StringBuilder();
             var peek = charReader.Peek();
-            if (peek.Value == '-')
-            {
-                sb.Append(charReader.Read());
-                peek = charReader.Peek();
-            }
 
-            while (peek.HasValue && _numerics.Contains(peek.Value))
+            while (peek.HasValue && Numerics.Contains(peek.Value))
             {
                 sb.Append(charReader.Read());
                 peek = charReader.Peek();
@@ -144,7 +146,7 @@ namespace TinyJsonSer
             c = charReader.Read();
             if (!c.HasValue) throw new JsonParseException("Unterminated string");
 
-            if (_shortEscapeDecodables.TryGetValue(c.Value, out char fromShortCode))
+            if (ShortEscapeDecodables.TryGetValue(c.Value, out char fromShortCode))
             {
                 return fromShortCode;
             }
@@ -169,7 +171,6 @@ namespace TinyJsonSer
                 {
                     throw new JsonParseException($"Invalid character '{c.Value}' in hexidecimal unicode notation");
                 }
-
             }
 
             var hexString = sb.ToString();
@@ -178,7 +179,7 @@ namespace TinyJsonSer
             return Convert.ToChar(sChar);
         }
 
-        private static readonly Dictionary<char, char> _shortEscapeDecodables
+        private static readonly Dictionary<char, char> ShortEscapeDecodables
             = new Dictionary<char, char>
             {
                 {'\"', '"'},
@@ -262,20 +263,25 @@ namespace TinyJsonSer
 
     internal class JsonObject : JsonValue
     {
-        public JsonObject(Dictionary<string, JsonValue> members)
+        public IEnumerable<JsonObjectMember> Members { get; }
+
+        public JsonObject(IEnumerable<JsonObjectMember> members)
         {
             Members = members;
         }
 
-        public Dictionary<string, JsonValue> Members { get; }
+        public JsonValue this[string index]
+        {
+            get { return Members.FirstOrDefault(m => m.Name == index)?.Value; }
+        }
     }
 
-    internal class JsonNameValuePair
+    internal class JsonObjectMember
     {
         public string Name { get; }
         public JsonValue Value { get; }
 
-        public JsonNameValuePair(string name, JsonValue value)
+        public JsonObjectMember(string name, JsonValue value)
         {
             Name = name;
             Value = value;
