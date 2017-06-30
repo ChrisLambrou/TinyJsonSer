@@ -40,6 +40,7 @@ namespace TinyJsonSer
             if (type == typeof(float)) return float.Parse(jsonNumber.StringRepresentation);
             if (type == typeof(double)) return double.Parse(jsonNumber.StringRepresentation);
 
+            // Fallback
             var tc = TypeDescriptor.GetConverter(type);
             if(tc.CanConvertFrom(typeof(string))) return tc.ConvertFromString(jsonNumber.StringRepresentation);
             
@@ -99,7 +100,11 @@ namespace TinyJsonSer
         private object DeserializeFromString(Type type, string str)
         {
             if (type == typeof(string)) return str;
-            return null;
+
+            // Fallback
+            var tc = TypeDescriptor.GetConverter(type);
+            if (tc.CanConvertFrom(typeof(string))) return tc.ConvertFromString(str);
+            throw new JsonException($"Could not map string to {type.Name}");
         }
 
         private object DeserializeString(Type type, JsonString jsonString)
