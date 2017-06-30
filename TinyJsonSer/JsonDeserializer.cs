@@ -34,11 +34,21 @@ namespace TinyJsonSer
 
         private object DeserializeNumber(Type type, JsonNumber jsonNumber)
         {
-            if (type == typeof(int)) return int.Parse(jsonNumber.StringRepresentation);
-            if (type == typeof(long)) return long.Parse(jsonNumber.StringRepresentation);
-            if (type == typeof(decimal)) return decimal.Parse(jsonNumber.StringRepresentation);
-            if (type == typeof(float)) return float.Parse(jsonNumber.StringRepresentation);
-            if (type == typeof(double)) return double.Parse(jsonNumber.StringRepresentation);
+            try
+            {
+                if (type == typeof(int)) return int.Parse(jsonNumber.StringRepresentation);
+                if (type == typeof(long)) return long.Parse(jsonNumber.StringRepresentation);
+                if (type == typeof(decimal)) return decimal.Parse(jsonNumber.StringRepresentation);
+                if (type == typeof(float)) return float.Parse(jsonNumber.StringRepresentation);
+                if (type == typeof(double)) return double.Parse(jsonNumber.StringRepresentation);
+                if (type == typeof(uint)) return uint.Parse(jsonNumber.StringRepresentation);
+                if (type == typeof(ulong)) return ulong.Parse(jsonNumber.StringRepresentation);
+                if (type == typeof(byte)) return byte.Parse(jsonNumber.StringRepresentation);
+            }
+            catch (FormatException)
+            {
+                throw new JsonException($"Malformed {type.Name}: '{jsonNumber.StringRepresentation}'");
+            }
 
             // Fallback
             var tc = TypeDescriptor.GetConverter(type);
@@ -52,8 +62,9 @@ namespace TinyJsonSer
             if (type.IsArray)
             {
                 var elementType = type.GetElementType();
-                var array = Array.CreateInstance(elementType, jsonArray.Items.Count);
-                for (var i = 0; i < jsonArray.Items.Count; i++)
+                var length = jsonArray.Items.Count;
+                var array = Array.CreateInstance(elementType, length);
+                for (var i = 0; i < length; i++)
                 {
                     array.SetValue(Deserialize(elementType, jsonArray.Items[i]), i);
                 }
@@ -100,6 +111,8 @@ namespace TinyJsonSer
         private object DeserializeFromString(Type type, string str)
         {
             if (type == typeof(string)) return str;
+
+            if (type == typeof(DateTime)) return DateTime.Parse(str, null, System.Globalization.DateTimeStyles.RoundtripKind);
 
             // Fallback
             var tc = TypeDescriptor.GetConverter(type);

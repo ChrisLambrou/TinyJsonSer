@@ -21,8 +21,10 @@ namespace TinyJsonSer
         /*
          * All private methods below that consume ICharReader assume the reader to be in a position 
          * where parsing can immediately take place. Therefore it is the responsibility of any code
-         * that calls .Read() to also advance any whitespace before returning or passing the reader
-         * to another method.
+         * that calls them to advance any whitespace prior to calling.
+         * 
+         * Similarly each of these private methods will advance whitespace before returning if they
+         * called Read().
          * */
 
         private JsonValue ParseJsonValue(ICharReader charReader)

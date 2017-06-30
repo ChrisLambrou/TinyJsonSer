@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 
 namespace TinyJsonSer.Tests
@@ -48,6 +49,20 @@ namespace TinyJsonSer.Tests
             var deserialiser = new JsonDeserializer();
             var val = deserialiser.Deserialize<TestEnum>(json);
             Assert.AreEqual(expectedValue, val);
+        }
+
+        [Test]
+        public void CanDeserialiseIso8601()
+        {
+            var deserialiser = new JsonDeserializer();
+            var val = deserialiser.Deserialize<DateTime>("\"2017-06-30T14:15:57Z\"");
+            Assert.AreEqual(2017, val.Year);
+            Assert.AreEqual(6, val.Month);
+            Assert.AreEqual(30, val.Day);
+            Assert.AreEqual(14, val.Hour);
+            Assert.AreEqual(15, val.Minute);
+            Assert.AreEqual(57, val.Second);
+            Assert.AreEqual(DateTimeKind.Utc, val.Kind);
         }
     }
 
