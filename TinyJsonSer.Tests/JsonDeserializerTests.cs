@@ -17,8 +17,8 @@ namespace TinyJsonSer.Tests
             Assert.AreEqual(true, testClass.BoolT);
             Assert.Null(testClass.Child);
             CollectionAssert.AreEqual(new[] {1,2,3,4,-5}, testClass.Int32s);
-            var bananas = testClass.StringCounts["Bananas"];
             var apples = testClass.StringCounts["Apples"];
+            var bananas = testClass.StringCounts["Bananas"];
             Assert.AreEqual(2, apples);
             Assert.AreEqual(3, bananas);
         }
@@ -33,13 +33,21 @@ namespace TinyJsonSer.Tests
                 Throws.Exception.TypeOf<JsonException>().With.Message.Contain("value type"));
         }
 
-        enum TestEnum { Red, Green, Blue }
-        [Test]
-        public void EnumDeserialization()
+        public enum TestEnum { Red, Green, Blue }
+        [TestCase("\"Red\"", TestEnum.Red)]
+        [TestCase("\"green\"", TestEnum.Green)]
+        [TestCase("\"BLUE\"", TestEnum.Blue)]
+        [TestCase("\"0\"", TestEnum.Red)]
+        [TestCase("\"1\"", TestEnum.Green)]
+        [TestCase("\"2\"", TestEnum.Blue)]
+        [TestCase("0", TestEnum.Red)]
+        [TestCase("1", TestEnum.Green)]
+        [TestCase("2", TestEnum.Blue)]
+        public void EnumDeserialization(string json, TestEnum expectedValue)
         {
             var deserialiser = new JsonDeserializer();
-            var val = deserialiser.Deserialize<TestEnum>("\"Green\"");
-            Assert.AreEqual(TestEnum.Green, val);
+            var val = deserialiser.Deserialize<TestEnum>(json);
+            Assert.AreEqual(expectedValue, val);
         }
     }
 

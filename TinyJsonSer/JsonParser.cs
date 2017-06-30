@@ -14,12 +14,19 @@ namespace TinyJsonSer
         public JsonValue Parse(string json)
         {
             var reader = new StringCharReader(json);
+            AdvanceWhitespace(reader);
             return ParseJsonValue(reader);
         }
 
+        /*
+         * All private methods below that consume ICharReader assume the reader to be in a position 
+         * where parsing can immediately take place. Therefore it is the responsibility of any code
+         * that calls .Read() to also advance any whitespace before returning or passing the reader
+         * to another method.
+         * */
+
         private JsonValue ParseJsonValue(ICharReader charReader)
         {
-            AdvanceWhitespace(charReader);
             var leadingCharacter = charReader.Peek();
             if (!leadingCharacter.HasValue) throw new JsonException("Unexpected end of stream");
             var valueType = IdentifyValueType(leadingCharacter.Value);
@@ -87,7 +94,7 @@ namespace TinyJsonSer
             return new JsonObjectMember(name.Value, value);
         }
 
-        private static readonly char[] Numerics = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'e' ,'E', '-'};
+        private static readonly char[] Numerics = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'e' ,'E', '-' };
 
         private JsonValue ParseNumber(ICharReader charReader)
         {
