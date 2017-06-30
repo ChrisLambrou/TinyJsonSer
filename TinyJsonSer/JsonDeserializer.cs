@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Reflection;
 
 namespace TinyJsonSer
 {
@@ -133,14 +134,14 @@ namespace TinyJsonSer
 
             foreach (var member in jsonObject.Members)
             {
-                var property = type.GetProperty(member.Name);
+                var property = type.GetProperty(member.Name, BindingFlags.Instance | BindingFlags.Public);
                 if (property != null)
                 {
                     var propertyValue = Deserialize(property.PropertyType, member.Value);
                     property.SetValue(obj, propertyValue, null);
                     continue;
                 }
-                var field = type.GetField(member.Name);
+                var field = type.GetField(member.Name, BindingFlags.Instance | BindingFlags.Public);
                 if (field != null)
                 {
                     var fieldValue = Deserialize(field.FieldType, member.Value);
