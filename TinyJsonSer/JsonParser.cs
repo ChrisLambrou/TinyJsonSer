@@ -21,7 +21,7 @@ namespace TinyJsonSer
         {
             AdvanceWhitespace(charReader);
             var leadingCharacter = charReader.Peek();
-            if (!leadingCharacter.HasValue) throw new JsonParseException("Unexpected end of stream");
+            if (!leadingCharacter.HasValue) throw new JsonException("Unexpected end of stream");
             var valueType = IdentifyValueType(leadingCharacter.Value);
 
             switch (valueType)
@@ -41,7 +41,7 @@ namespace TinyJsonSer
                 case JsonValueType.Null:
                     return ParseNull(charReader);
                 case JsonValueType.Unrecognised:
-                    throw new JsonParseException($"Unexpected character '{leadingCharacter.Value}'");
+                    throw new JsonException($"Unexpected character '{leadingCharacter.Value}'");
                 default:
                     throw new ArgumentOutOfRangeException(nameof(valueType), valueType, null);
             }
@@ -55,20 +55,20 @@ namespace TinyJsonSer
             AdvanceWhitespace(charReader);
 
             var peek = charReader.Peek();
-            if (!peek.HasValue) throw new JsonParseException("Unterminated object");
+            if (!peek.HasValue) throw new JsonException("Unterminated object");
 
             while (peek.Value != '}')
             {
                 if (members.Any())
                 {
-                    if(peek.Value != ',') throw new JsonParseException("Missing comma separater between object members.");
+                    if(peek.Value != ',') throw new JsonException("Missing comma separater between object members.");
                     charReader.Read();
                     AdvanceWhitespace(charReader);
                 }
                 var member = ParseObjectMember(charReader);
                 members.Add(member);
                 peek = charReader.Peek();
-                if(!peek.HasValue) throw new JsonParseException("Unterminated object");
+                if(!peek.HasValue) throw new JsonException("Unterminated object");
             }
             charReader.Read(); // }
             AdvanceWhitespace(charReader);
@@ -80,7 +80,7 @@ namespace TinyJsonSer
             var name = ParseString(charReader);
             AdvanceWhitespace(charReader);
             var separator = charReader.Read();
-            if (separator != ':') throw new JsonParseException("expected ':' after member name definition");
+            if (separator != ':') throw new JsonException("expected ':' after member name definition");
             AdvanceWhitespace(charReader);
             var value = ParseJsonValue(charReader);
             AdvanceWhitespace(charReader);
@@ -113,7 +113,7 @@ namespace TinyJsonSer
             {
                 if (items.Any())
                 {
-                    if (charReader.Peek() != ',') throw new JsonParseException("Missing comma separater between array items.");
+                    if (charReader.Peek() != ',') throw new JsonException("Missing comma separater between array items.");
                     charReader.Read();
                     AdvanceWhitespace(charReader);
                 }
@@ -128,7 +128,7 @@ namespace TinyJsonSer
         private JsonString ParseString(ICharReader charReader)
         {
             var delimiter = charReader.Read();
-            if (delimiter != '\'' && delimiter != '"') throw new JsonParseException("Strings must be delimiated with either single or double quotes");
+            if (delimiter != '\'' && delimiter != '"') throw new JsonException("Strings must be delimiated with either single or double quotes");
 
             var sb = new StringBuilder();
             var c = GetNextStringCharacter(charReader);
@@ -145,12 +145,12 @@ namespace TinyJsonSer
         private char? GetNextStringCharacter(ICharReader charReader)
         {
             var c = charReader.Read();
-            if (!c.HasValue) throw new JsonParseException("Unterminated string");
-            if (CharRequiresEscapeInString(c.Value)) throw new JsonParseException($"Unescaped '{c}' in string");
+            if (!c.HasValue) throw new JsonException("Unterminated string");
+            if (CharRequiresEscapeInString(c.Value)) throw new JsonException($"Unescaped '{c}' in string");
             if (c != '\\') return c;
 
             c = charReader.Read();
-            if (!c.HasValue) throw new JsonParseException("Unterminated string");
+            if (!c.HasValue) throw new JsonException("Unterminated string");
 
             char fromShortCode;
             if (ShortEscapeDecodables.TryGetValue(c.Value, out fromShortCode))
@@ -160,7 +160,7 @@ namespace TinyJsonSer
 
             if (c == 'u') return GetUnicodeSymbol(charReader);
 
-            throw new JsonParseException("Unrecognised escape sequence '\\{c}'");
+            throw new JsonException("Unrecognised escape sequence '\\{c}'");
         }
 
         private char? GetUnicodeSymbol(ICharReader charReader)
@@ -169,14 +169,14 @@ namespace TinyJsonSer
             for (var i = 0; i < 4; i++)
             {
                 var c = charReader.Read();
-                if (!c.HasValue) throw new JsonParseException("Unterminated string");
+                if (!c.HasValue) throw new JsonException("Unterminated string");
                 if (char.IsDigit(c.Value) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
                 {
                     sb.Append(c.Value);
                 }
                 else
                 {
-                    throw new JsonParseException($"Invalid character '{c.Value}' in hexidecimal unicode notation");
+                    throw new JsonException($"Invalid character '{c.Value}' in hexidecimal unicode notation");
                 }
             }
 
@@ -207,7 +207,7 @@ namespace TinyJsonSer
         {
             foreach (char c in _true)
             {
-                if (c != charReader.Read()) throw new JsonParseException($"Expected character '{c}' whilst parsing 'true'");
+                if (c != charReader.Read()) throw new JsonException($"Expected character '{c}' whilst parsing 'true'");
             }
             return new JsonTrue();
         }
@@ -216,7 +216,7 @@ namespace TinyJsonSer
         {
             foreach (char c in _false)
             {
-                if (c != charReader.Read()) throw new JsonParseException($"Expected character '{c}' whilst parsing 'false'");
+                if (c != charReader.Read()) throw new JsonException($"Expected character '{c}' whilst parsing 'false'");
             }
             return new JsonFalse();
         }
@@ -225,7 +225,7 @@ namespace TinyJsonSer
         {
             foreach (char c in _null)
             {
-                if (c != charReader.Read()) throw new JsonParseException($"Expected character '{c}' whilst parsing 'null'");
+                if (c != charReader.Read()) throw new JsonException($"Expected character '{c}' whilst parsing 'null'");
             }
             return new JsonNull();
         }
@@ -260,9 +260,9 @@ namespace TinyJsonSer
         }
     }
 
-    internal class JsonParseException : Exception
+    internal class JsonException : Exception
     {
-        public JsonParseException(string message) : base(message)
+        public JsonException(string message) : base(message)
         {
         }
     }
