@@ -71,7 +71,7 @@ namespace TinyJsonSer
                 if(!peek.HasValue) throw new JsonParseException("Unterminated object");
             }
             charReader.Read(); // }
-
+            AdvanceWhitespace(charReader);
             return new JsonObject(members);
         }
 
@@ -100,6 +100,7 @@ namespace TinyJsonSer
                 peek = charReader.Peek();
             }
 
+            AdvanceWhitespace(charReader);
             return new JsonNumber(sb.ToString());
         }
 
@@ -110,13 +111,17 @@ namespace TinyJsonSer
             var items = new List<JsonValue>();
             while (charReader.Peek() != ']')
             {
+                if (items.Any())
+                {
+                    if (charReader.Peek() != ',') throw new JsonParseException("Missing comma separater between array items.");
+                    charReader.Read();
+                    AdvanceWhitespace(charReader);
+                }
                 items.Add(ParseJsonValue(charReader));
-                AdvanceWhitespace(charReader);
-                if (charReader.Peek() != ',') break;
-                charReader.Read();
-                AdvanceWhitespace(charReader);
             }
             charReader.Read(); // ]
+
+            AdvanceWhitespace(charReader);
             return new JsonArray(items);
         }
 
@@ -133,6 +138,7 @@ namespace TinyJsonSer
                 c = GetNextStringCharacter(charReader);
             }
 
+            AdvanceWhitespace(charReader);
             return new JsonString(sb.ToString());
         }
 
@@ -146,7 +152,8 @@ namespace TinyJsonSer
             c = charReader.Read();
             if (!c.HasValue) throw new JsonParseException("Unterminated string");
 
-            if (ShortEscapeDecodables.TryGetValue(c.Value, out char fromShortCode))
+            char fromShortCode;
+            if (ShortEscapeDecodables.TryGetValue(c.Value, out fromShortCode))
             {
                 return fromShortCode;
             }
@@ -236,7 +243,7 @@ namespace TinyJsonSer
                 case 'n': return JsonValueType.Null;
             }
 
-            if (Char.IsDigit(leadingCharacter)) return JsonValueType.Number;
+            if (char.IsDigit(leadingCharacter)) return JsonValueType.Number;
             if (leadingCharacter == '-') return JsonValueType.Number;
 
             return JsonValueType.Unrecognised;
