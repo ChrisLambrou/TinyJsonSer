@@ -134,14 +134,30 @@ namespace TinyJsonSer
 
             foreach (var member in jsonObject.Members)
             {
-                var property = type.GetProperty(member.Name, BindingFlags.Instance | BindingFlags.Public);
+                var exactProperty = type.GetProperty(member.Name, BindingFlags.Instance | BindingFlags.Public);
+                if (exactProperty != null)
+                {
+                    var propertyValue = Deserialize(exactProperty.PropertyType, member.Value);
+                    exactProperty.SetValue(obj, propertyValue, null);
+                    continue;
+                }
+
+                var property = type.GetProperty(member.Name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
                 if (property != null)
                 {
                     var propertyValue = Deserialize(property.PropertyType, member.Value);
                     property.SetValue(obj, propertyValue, null);
                     continue;
                 }
-                var field = type.GetField(member.Name, BindingFlags.Instance | BindingFlags.Public);
+
+                var exactField = type.GetField(member.Name, BindingFlags.Instance | BindingFlags.Public);
+                if (exactField != null)
+                {
+                    var fieldValue = Deserialize(exactField.FieldType, member.Value);
+                    exactField.SetValue(obj, fieldValue);
+                }
+
+                var field = type.GetField(member.Name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
                 if (field != null)
                 {
                     var fieldValue = Deserialize(field.FieldType, member.Value);

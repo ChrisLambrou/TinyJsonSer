@@ -42,6 +42,7 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IntegrationTests.cs" />
     <Compile Include="JsonDeserializerTests.cs" />
     <Compile Include="JsonParserTests.cs" />
     <Compile Include="JsonSerializerTests.cs" />
