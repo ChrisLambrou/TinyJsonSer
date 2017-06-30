@@ -23,12 +23,23 @@ namespace TinyJsonSer.Tests
             Assert.AreEqual(3, bananas);
         }
 
-        [Test]
-        public void CantDeserializeNullToValueType()
+        [TestCase(@"{""BoolT"" : null }")]
+        [TestCase(@"{""Int32"" : null }")]
+        public void CantDeserializeNullToValueType(string nullToValueTypeJson)
         {
             var deserialiser = new JsonDeserializer();
-            Assert.Throws<JsonException>(() =>
-                deserialiser.Deserialize<TestClass>(@"{""BoolT"" : null }"));
+            Assert.That(() =>
+                deserialiser.Deserialize<TestClass>(nullToValueTypeJson),
+                Throws.Exception.TypeOf<JsonException>().With.Message.Contain("value type"));
+        }
+
+        enum TestEnum { Red, Green, Blue }
+        [Test]
+        public void EnumDeserialization()
+        {
+            var deserialiser = new JsonDeserializer();
+            var val = deserialiser.Deserialize<TestEnum>("\"Green\"");
+            Assert.AreEqual(TestEnum.Green, val);
         }
     }
 
@@ -39,6 +50,7 @@ namespace TinyJsonSer.Tests
         public int[] Int32s { get; set; }
         public bool BoolT { get; set; }
         public bool BoolF { get; set; }
+        public int Int32 { get; set; }
         public TestClass Child { get; set; }
 
         public static string Json()

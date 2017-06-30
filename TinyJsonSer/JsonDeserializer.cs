@@ -23,11 +23,11 @@ namespace TinyJsonSer
         {
             if (jsonValue is JsonString) return DeserializeString(type, (JsonString)jsonValue);
             if (jsonValue is JsonObject) return DeserializeObject(type, (JsonObject)jsonValue);
-            if (jsonValue is JsonArray) return DeserializeArray(type, (JsonArray)jsonValue);
+            if (jsonValue is JsonArray)  return DeserializeArray(type, (JsonArray)jsonValue);
             if (jsonValue is JsonNumber) return DeserializeNumber(type, (JsonNumber)jsonValue);
-            if (jsonValue is JsonNull) return DeserializeNull(type);
-            if (jsonValue is JsonTrue) return DeserializeBoolean(type, true);
-            if (jsonValue is JsonFalse) return DeserializeBoolean(type, false);
+            if (jsonValue is JsonNull)   return DeserializeNull(type);
+            if (jsonValue is JsonTrue)   return DeserializeBoolean(type, true);
+            if (jsonValue is JsonFalse)  return DeserializeBoolean(type, false);
 
             throw new JsonException($"No deserializer for {jsonValue.GetType().Name}");
         }
@@ -35,7 +35,7 @@ namespace TinyJsonSer
         private object DeserializeNumber(Type type, JsonNumber jsonNumber)
         {
             if (type == typeof(int)) return int.Parse(jsonNumber.StringRepresentation);
-            if (type == typeof(Int64)) return Int64.Parse(jsonNumber.StringRepresentation);
+            if (type == typeof(long)) return long.Parse(jsonNumber.StringRepresentation);
             if (type == typeof(decimal)) return decimal.Parse(jsonNumber.StringRepresentation);
             if (type == typeof(float)) return float.Parse(jsonNumber.StringRepresentation);
             if (type == typeof(double)) return double.Parse(jsonNumber.StringRepresentation);
@@ -73,7 +73,7 @@ namespace TinyJsonSer
         private object DeserializeNull(Type type)
         {
             if (!type.IsValueType) return null;
-            throw new JsonException($"Could not map JsonNull to {type.Name}");
+            throw new JsonException($"Could not map JsonNull to a value type '{type.Name}'");
         }
 
         private object DeserializeBoolean(Type type, bool value)
