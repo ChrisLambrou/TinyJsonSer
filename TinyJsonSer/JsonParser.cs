@@ -60,7 +60,10 @@ namespace TinyJsonSer
         {
             var members = new List<JsonObjectMember>();
 
-            charReader.Read(); // {
+            if(!charReader.Read('{'))
+            {
+                throw new JsonException("Expected '{' when parsing json object.");
+            }
             AdvanceWhitespace(charReader);
 
             var peek = charReader.Peek();
@@ -70,14 +73,14 @@ namespace TinyJsonSer
             {
                 if (members.Any())
                 {
-                    if(peek.Value != ',') throw new JsonException("Missing comma separater between object members.");
+                    if (peek.Value != ',') throw new JsonException("Missing comma separater between object members.");
                     charReader.Read();
                     AdvanceWhitespace(charReader);
                 }
                 var member = ParseObjectMember(charReader);
                 members.Add(member);
                 peek = charReader.Peek();
-                if(!peek.HasValue) throw new JsonException("Unterminated object");
+                if (!peek.HasValue) throw new JsonException("Unterminated object");
             }
             charReader.Read(); // }
             AdvanceWhitespace(charReader);
@@ -88,15 +91,17 @@ namespace TinyJsonSer
         {
             var name = ParseString(charReader);
             AdvanceWhitespace(charReader);
-            var separator = charReader.Read();
-            if (separator != ':') throw new JsonException("expected ':' after member name definition");
+            if (!charReader.Read(':'))
+            {
+                throw new JsonException("expected ':' after member name definition");
+            }
             AdvanceWhitespace(charReader);
             var value = ParseJsonValue(charReader);
             AdvanceWhitespace(charReader);
             return new JsonObjectMember(name.Value, value);
         }
 
-        private static readonly char[] Numerics = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'e' ,'E', '-' };
+        private static readonly char[] Numerics = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'e', 'E', '-' };
 
         private JsonValue ParseNumber(ICharReader charReader)
         {
@@ -122,8 +127,10 @@ namespace TinyJsonSer
             {
                 if (items.Any())
                 {
-                    if (charReader.Peek() != ',') throw new JsonException("Missing comma separater between array items.");
-                    charReader.Read();
+                    if (!charReader.Read(','))
+                    {
+                        throw new JsonException("Missing comma separater between array items.");
+                    }
                     AdvanceWhitespace(charReader);
                 }
                 items.Add(ParseJsonValue(charReader));
@@ -214,27 +221,27 @@ namespace TinyJsonSer
 
         private JsonValue ParseTrue(ICharReader charReader)
         {
-            foreach (char c in _true)
+            foreach (var c in _true)
             {
-                if (c != charReader.Read()) throw new JsonException($"Expected character '{c}' whilst parsing 'true'");
+                if (c != charReader.Read()) throw new JsonException($"Unexpected character '{c}' whilst parsing 'true'");
             }
             return new JsonTrue();
         }
 
         private JsonValue ParseFalse(ICharReader charReader)
         {
-            foreach (char c in _false)
+            foreach (var c in _false)
             {
-                if (c != charReader.Read()) throw new JsonException($"Expected character '{c}' whilst parsing 'false'");
+                if (c != charReader.Read()) throw new JsonException($"Unexpected character '{c}' whilst parsing 'false'");
             }
             return new JsonFalse();
         }
 
         private JsonValue ParseNull(ICharReader charReader)
         {
-            foreach (char c in _null)
+            foreach (var c in _null)
             {
-                if (c != charReader.Read()) throw new JsonException($"Expected character '{c}' whilst parsing 'null'");
+                if (c != charReader.Read()) throw new JsonException($"Unexpected character '{c}' whilst parsing 'null'");
             }
             return new JsonNull();
         }
@@ -252,8 +259,8 @@ namespace TinyJsonSer
                 case 'n': return JsonValueType.Null;
             }
 
-            if (char.IsDigit(leadingCharacter)) return JsonValueType.Number;
-            if (leadingCharacter == '-') return JsonValueType.Number;
+            if (char.IsDigit(leadingCharacter) 
+                || leadingCharacter == '-') return JsonValueType.Number;
 
             return JsonValueType.Unrecognised;
         }
@@ -357,8 +364,25 @@ namespace TinyJsonSer
 
     internal interface ICharReader
     {
+        /// <summary>
+        /// Peek() returns the next character in the stream without
+        /// advancing the position counter. Returns null if there
+        /// are no further characters in the stream.
+        /// </summary>
         char? Peek();
+
+        /// <summary>
+        /// Returns the next character in the stream, or null if EoS.
+        /// </summary>
         char? Read();
+
+        /// <summary>
+        /// If the supplied character is the next character in the
+        /// stream the position counter is advanced and the method
+        /// returns true. Otherwise the counter is not advanced and
+        /// the method returns false.
+        /// </summary>
+        bool Read(char c);
     }
 
     internal class StringCharReader : ICharReader
@@ -385,6 +409,13 @@ namespace TinyJsonSer
         {
             if (position > _string.Length - 1) return null;
             return _string[position];
+        }
+
+        public bool Read(char c)
+        {
+            if (Read(_position) != c) return false;
+            _position++;
+            return true;
         }
     }
 }
