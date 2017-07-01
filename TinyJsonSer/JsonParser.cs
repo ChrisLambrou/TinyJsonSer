@@ -14,22 +14,12 @@ namespace TinyJsonSer
         public JsonValue Parse(string json)
         {
             var reader = new StringCharReader(json);
-            AdvanceWhitespace(reader);
             return ParseJsonValue(reader);
         }
 
-        /*
-         * All private methods below that consume ICharReader assume the reader to be in a position 
-         * where parsing can immediately take place. Therefore it is the responsibility of any code
-         * that calls them to advance any whitespace prior to calling.
-         * 
-         * Similarly each of these private methods will advance whitespace before returning if they
-         * called Read().
-         * */
-
         private JsonValue ParseJsonValue(ICharReader charReader)
         {
-            var leadingCharacter = charReader.Peek();
+            var leadingCharacter = charReader.TrimThenPeek();
             if (!leadingCharacter.HasValue) throw new JsonException("Unexpected end of stream");
             var valueType = IdentifyValueType(leadingCharacter.Value);
 
@@ -60,44 +50,40 @@ namespace TinyJsonSer
         {
             var members = new List<JsonObjectMember>();
 
-            if(!charReader.Read('{'))
+            if(!charReader.TrimRead('{'))
             {
                 throw new JsonException("Expected '{' when parsing json object.");
             }
-            AdvanceWhitespace(charReader);
 
-            var peek = charReader.Peek();
+            var peek = charReader.TrimThenPeek();
             if (!peek.HasValue) throw new JsonException("Unterminated object");
 
             while (peek.Value != '}')
             {
                 if (members.Any())
                 {
-                    if (peek.Value != ',') throw new JsonException("Missing comma separater between object members.");
-                    charReader.Read();
-                    AdvanceWhitespace(charReader);
+                    if (!charReader.TrimRead(','))
+                    {
+                        throw new JsonException("Missing comma separater between array items.");
+                    }
                 }
                 var member = ParseObjectMember(charReader);
                 members.Add(member);
-                peek = charReader.Peek();
+                peek = charReader.TrimThenPeek();
                 if (!peek.HasValue) throw new JsonException("Unterminated object");
             }
             charReader.Read(); // }
-            AdvanceWhitespace(charReader);
             return new JsonObject(members);
         }
 
         private JsonObjectMember ParseObjectMember(ICharReader charReader)
         {
             var name = ParseString(charReader);
-            AdvanceWhitespace(charReader);
-            if (!charReader.Read(':'))
+            if (!charReader.TrimRead(':'))
             {
                 throw new JsonException("expected ':' after member name definition");
             }
-            AdvanceWhitespace(charReader);
             var value = ParseJsonValue(charReader);
-            AdvanceWhitespace(charReader);
             return new JsonObjectMember(name.Value, value);
         }
 
@@ -114,36 +100,33 @@ namespace TinyJsonSer
                 peek = charReader.Peek();
             }
 
-            AdvanceWhitespace(charReader);
             return new JsonNumber(sb.ToString());
         }
 
         private JsonValue ParseArray(ICharReader charReader)
         {
-            charReader.Read(); // [
-            AdvanceWhitespace(charReader);
+            charReader.TrimRead(); // [
+
             var items = new List<JsonValue>();
-            while (charReader.Peek() != ']')
+            while (charReader.TrimThenPeek() != ']')
             {
                 if (items.Any())
                 {
-                    if (!charReader.Read(','))
+                    if (!charReader.TrimRead(','))
                     {
                         throw new JsonException("Missing comma separater between array items.");
                     }
-                    AdvanceWhitespace(charReader);
                 }
                 items.Add(ParseJsonValue(charReader));
             }
             charReader.Read(); // ]
 
-            AdvanceWhitespace(charReader);
             return new JsonArray(items);
         }
 
         private JsonString ParseString(ICharReader charReader)
         {
-            var delimiter = charReader.Read();
+            var delimiter = charReader.TrimRead();
             if (delimiter != '\'' && delimiter != '"') throw new JsonException("Strings must be delimiated with either single or double quotes");
 
             var sb = new StringBuilder();
@@ -154,7 +137,6 @@ namespace TinyJsonSer
                 c = GetNextStringCharacter(charReader);
             }
 
-            AdvanceWhitespace(charReader);
             return new JsonString(sb.ToString());
         }
 
@@ -264,8 +246,29 @@ namespace TinyJsonSer
 
             return JsonValueType.Unrecognised;
         }
+    }
 
-        private void AdvanceWhitespace(ICharReader charReader)
+    static class ExtentionMethods
+    {
+        public static char? TrimThenPeek(this ICharReader charReader)
+        {
+            AdvanceWhitespace(charReader);
+            return charReader.Peek();
+    }
+
+    public static char? TrimRead(this ICharReader charReader)
+    {
+        AdvanceWhitespace(charReader);
+        return charReader.Read();
+    }
+
+    public static bool TrimRead(this ICharReader charReader, char c)
+    {
+        AdvanceWhitespace(charReader);
+        return charReader.Read(c);
+    }
+
+    private static void AdvanceWhitespace(ICharReader charReader)
         {
             var peek = charReader.Peek();
             while (peek.HasValue && char.IsWhiteSpace(peek.Value))
@@ -388,7 +391,7 @@ namespace TinyJsonSer
     internal class StringCharReader : ICharReader
     {
         private readonly string _string;
-        private int _position = 0;
+        private int _position;
 
         public StringCharReader(string s)
         {
@@ -405,17 +408,17 @@ namespace TinyJsonSer
             return Read(_position++);
         }
 
-        private char? Read(int position)
-        {
-            if (position > _string.Length - 1) return null;
-            return _string[position];
-        }
-
         public bool Read(char c)
         {
             if (Read(_position) != c) return false;
             _position++;
             return true;
+        }
+
+        private char? Read(int position)
+        {
+            if (position > _string.Length - 1) return null;
+            return _string[position];
         }
     }
 }
