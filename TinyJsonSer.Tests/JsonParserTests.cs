@@ -58,5 +58,15 @@ namespace TinyJsonSer.Tests
             Assert.AreEqual("2", field1.StringRepresentation);
             Assert.AreEqual("payload", field2.Value);
         }
+        
+        [Test]
+        public void EscapedChars()
+        {
+            var str = "\"\\\"{}\\/\\uD835\\uDC9C  \\b\\t\\r\\n\"";
+            var parser = new JsonParser();
+            var parsed = parser.Parse(str) as JsonString;
+            Assert.NotNull(parsed);
+            Assert.AreEqual("\"{}/𝒜  \b\t\r\n", parsed.Value);
+        }
     }
 }

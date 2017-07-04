@@ -130,20 +130,21 @@ namespace TinyJsonSer
             if (delimiter != '\'' && delimiter != '"') throw new JsonException("Strings must be delimiated with either single or double quotes");
 
             var sb = new StringBuilder();
-            var c = GetNextStringCharacter(charReader);
-            while (c != delimiter)
+            var c = GetNextStringCharacter(charReader, delimiter);
+            while (c.HasValue)
             {
                 sb.Append(c);
-                c = GetNextStringCharacter(charReader);
+                c = GetNextStringCharacter(charReader, delimiter);
             }
 
             return new JsonString(sb.ToString());
         }
 
-        private char? GetNextStringCharacter(ICharReader charReader)
+        private char? GetNextStringCharacter(ICharReader charReader, char? delimiter)
         {
             var c = charReader.Read();
             if (!c.HasValue) throw new JsonException("Unterminated string");
+            if (c == delimiter) return null;
             if (CharRequiresEscapeInString(c.Value)) throw new JsonException($"Unescaped '{c}' in string");
             if (c != '\\') return c;
 
@@ -158,7 +159,7 @@ namespace TinyJsonSer
 
             if (c == 'u') return GetUnicodeSymbol(charReader);
 
-            throw new JsonException("Unrecognised escape sequence '\\{c}'");
+            throw new JsonException($"Unrecognised escape sequence '\\{c}'");
         }
 
         private char? GetUnicodeSymbol(ICharReader charReader)
@@ -189,6 +190,7 @@ namespace TinyJsonSer
             {
                 {'\"', '"'},
                 {'\\', '\\'},
+                {'/', '/'},
                 {'b', '\b'},
                 {'f', '\f'},
                 {'n', '\n'},
