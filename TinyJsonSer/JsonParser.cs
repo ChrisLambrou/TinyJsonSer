@@ -50,7 +50,7 @@ namespace TinyJsonSer
         {
             var members = new List<JsonObjectMember>();
 
-            if(!charReader.TrimRead('{'))
+            if (!charReader.TrimRead('{'))
             {
                 throw new JsonException("Expected '{' when parsing json object.");
             }
@@ -243,7 +243,7 @@ namespace TinyJsonSer
                 case 'n': return JsonValueType.Null;
             }
 
-            if (char.IsDigit(leadingCharacter) 
+            if (char.IsDigit(leadingCharacter)
                 || leadingCharacter == '-') return JsonValueType.Number;
 
             return JsonValueType.Unrecognised;
@@ -256,21 +256,21 @@ namespace TinyJsonSer
         {
             AdvanceWhitespace(charReader);
             return charReader.Peek();
-    }
+        }
 
-    public static char? TrimRead(this ICharReader charReader)
-    {
-        AdvanceWhitespace(charReader);
-        return charReader.Read();
-    }
+        public static char? TrimRead(this ICharReader charReader)
+        {
+            AdvanceWhitespace(charReader);
+            return charReader.Read();
+        }
 
-    public static bool TrimRead(this ICharReader charReader, char c)
-    {
-        AdvanceWhitespace(charReader);
-        return charReader.Read(c);
-    }
+        public static bool TrimRead(this ICharReader charReader, char c)
+        {
+            AdvanceWhitespace(charReader);
+            return charReader.Read(c);
+        }
 
-    private static void AdvanceWhitespace(ICharReader charReader)
+        private static void AdvanceWhitespace(ICharReader charReader)
         {
             var peek = charReader.Peek();
             while (peek.HasValue && char.IsWhiteSpace(peek.Value))
