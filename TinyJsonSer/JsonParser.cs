@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -7,13 +8,19 @@ namespace TinyJsonSer
 {
     internal sealed class JsonParser
     {
-        private static char[] _null = new char[] { 'n', 'u', 'l', 'l' };
-        private static char[] _true = new char[] { 't', 'r', 'u', 'e' };
-        private static char[] _false = new char[] { 'f', 'a', 'l', 's', 'e' };
+        private static char[] _null = { 'n', 'u', 'l', 'l' };
+        private static char[] _true = { 't', 'r', 'u', 'e' };
+        private static char[] _false = { 'f', 'a', 'l', 's', 'e' };
 
         public JsonValue Parse(string json)
         {
             var reader = new StringCharReader(json);
+            return ParseJsonValue(reader);
+        }
+
+        public JsonValue Parse(StreamReader jsonTextStream)
+        {
+            var reader = new StreamCharReader(jsonTextStream);
             return ParseJsonValue(reader);
         }
 
@@ -288,7 +295,6 @@ namespace TinyJsonSer
         }
     }
 
-
     internal class JsonObject : JsonValue
     {
         public IEnumerable<JsonObjectMember> Members { get; }
@@ -363,7 +369,7 @@ namespace TinyJsonSer
 
     enum JsonValueType { String, Number, Object, Array, True, False, Null, Unrecognised }
 
-    internal class JsonValue
+    internal abstract class JsonValue
     {
     }
 
@@ -389,6 +395,41 @@ namespace TinyJsonSer
         /// </summary>
         bool Read(char c);
     }
+
+    internal class StreamCharReader : ICharReader
+    {
+        private readonly StreamReader _stream;
+
+        public StreamCharReader(StreamReader stream)
+        {
+            if (stream == null) throw new ArgumentNullException(nameof(stream));
+            _stream = stream;
+        }
+
+        public char? Peek()
+        {
+            var c = _stream.Peek();
+            return c == -1
+                ? null
+                : (char?)c;
+        }
+
+        public char? Read()
+        {
+            var c = _stream.Read();
+            return c == -1
+                ? null
+                : (char?)c;
+        }
+
+        public bool Read(char c)
+        {
+            if (c != Peek()) return false;
+            _stream.Read();
+            return true;
+        }
+    }
+
 
     internal class StringCharReader : ICharReader
     {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Reflection;
 
 namespace TinyJsonSer
@@ -17,6 +18,17 @@ namespace TinyJsonSer
         public object Deserialize(Type type, string json)
         {
             var jsonValue = _parser.Parse(json);
+            return Deserialize(type, jsonValue);
+        }
+
+        public T Deserialize<T>(StreamReader jsonTextStream)
+        {
+            return (T)Deserialize(typeof(T), jsonTextStream);
+        }
+
+        public object Deserialize(Type type, StreamReader jsonTextStream)
+        {
+            var jsonValue = _parser.Parse(jsonTextStream);
             return Deserialize(type, jsonValue);
         }
 
