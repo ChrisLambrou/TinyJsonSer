@@ -127,15 +127,15 @@ namespace TinyJsonSer
 
             if (type == typeof(DateTime)) return DateTime.Parse(str, null, System.Globalization.DateTimeStyles.RoundtripKind);
 
+            var tc = TypeDescriptor.GetConverter(type);
+            if (tc.CanConvertFrom(typeof(string))) return tc.ConvertFromString(str);
+
             if (type.IsClass)
             {
                 var jsonObject = _parser.Parse(str) as JsonObject;
-                if(jsonObject != null) return CreateClass(type, jsonObject);
+                if (jsonObject != null) return CreateClass(type, jsonObject);
             }
 
-            // Fallback
-            var tc = TypeDescriptor.GetConverter(type);
-            if (tc.CanConvertFrom(typeof(string))) return tc.ConvertFromString(str);
             throw new JsonException($"Could not map string to {type.Name}");
         }
 
