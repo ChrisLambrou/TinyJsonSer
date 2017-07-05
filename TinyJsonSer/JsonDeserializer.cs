@@ -6,7 +6,7 @@ using System.Reflection;
 
 namespace TinyJsonSer
 {
-    internal class JsonDeserializer
+    public class JsonDeserializer
     {
         private static readonly JsonParser _parser = new JsonParser();
 
@@ -127,6 +127,12 @@ namespace TinyJsonSer
 
             if (type == typeof(DateTime)) return DateTime.Parse(str, null, System.Globalization.DateTimeStyles.RoundtripKind);
 
+            if (type.IsClass)
+            {
+                var jsonObject = _parser.Parse(str) as JsonObject;
+                if(jsonObject != null) return CreateClass(type, jsonObject);
+            }
+
             // Fallback
             var tc = TypeDescriptor.GetConverter(type);
             if (tc.CanConvertFrom(typeof(string))) return tc.ConvertFromString(str);
@@ -167,6 +173,7 @@ namespace TinyJsonSer
                 {
                     var fieldValue = Deserialize(exactField.FieldType, member.Value);
                     exactField.SetValue(obj, fieldValue);
+                    continue;
                 }
 
                 var field = type.GetField(member.Name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
