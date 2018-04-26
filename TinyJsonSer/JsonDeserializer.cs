@@ -130,12 +130,6 @@ namespace TinyJsonSer
             var tc = TypeDescriptor.GetConverter(type);
             if (tc.CanConvertFrom(typeof(string))) return tc.ConvertFromString(str);
 
-            if (type.IsClass)
-            {
-                var jsonObject = _parser.Parse(str) as JsonObject;
-                if (jsonObject != null) return CreateClass(type, jsonObject);
-            }
-
             throw new JsonException($"Could not map string to {type.Name}");
         }
 

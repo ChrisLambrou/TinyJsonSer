@@ -36,7 +36,7 @@ namespace /***$rootnamespace$.***/TinyJsonSer
     /// parameters, and reuse it to convert objects to JSON using <see cref="Serialize(object)"/>,
     /// <see cref="Serialize(object,TextWriter)"/> or <see cref="Serialize(object,StringBuilder)"/>.
     /// </remarks>
-    internal sealed class JsonSerializer
+    public sealed class JsonSerializer
     {
         private readonly IDictionary<Type, Action<object, Action<string>, Action<char>>> _basicHandlers;
         private readonly bool _indented;

@@ -26,7 +26,7 @@ namespace TinyJsonSer.Tests
 
         [TestCase(@"{""BoolT"" : null }")]
         [TestCase(@"{""Int32"" : null }")]
-        public void CantDeserializeNullToValueType(string nullToValueTypeJson)
+        public void CannotDeserializeNullToValueType(string nullToValueTypeJson)
         {
             var deserialiser = new JsonDeserializer();
             Assert.That(() =>
