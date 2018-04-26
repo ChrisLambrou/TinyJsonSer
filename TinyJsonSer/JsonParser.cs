@@ -74,8 +74,7 @@ namespace TinyJsonSer
                         throw new JsonException("Missing comma separater between array items.");
                     }
                 }
-                var member = ParseObjectMember(charReader);
-                members.Add(member);
+                members.Add(ParseObjectMember(charReader));
                 peek = charReader.TrimThenPeek();
                 if (!peek.HasValue) throw new JsonException("Unterminated object");
             }
@@ -88,7 +87,7 @@ namespace TinyJsonSer
             var name = ParseString(charReader);
             if (!charReader.TrimRead(':'))
             {
-                throw new JsonException("expected ':' after member name definition");
+                throw new JsonException("expected ':' after member name.");
             }
             var value = ParseJsonValue(charReader);
             return new JsonObjectMember(name.Value, value);
