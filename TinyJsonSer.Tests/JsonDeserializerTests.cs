@@ -64,6 +64,76 @@ namespace TinyJsonSer.Tests
             Assert.AreEqual(57, val.Second);
             Assert.AreEqual(DateTimeKind.Utc, val.Kind);
         }
+
+        [Test]
+        public void CanDeserialiseImmutableClass()
+        {
+            var deserialiser = new JsonDeserializer();
+            var obj = deserialiser.Deserialize<ImmutableClass>(ImmutableClass.Json());
+            Assert.AreEqual(10, obj.IntValue);
+            Assert.AreEqual("Hello", obj.StrValue);
+        }
+
+        [Test]
+        public void CanDeserialiseMixedMutabilityClass()
+        {
+            var deserialiser = new JsonDeserializer();
+            var obj = deserialiser.Deserialize<MixedMutabilityClass>(MixedMutabilityClass.Json());
+            Assert.AreEqual(10, obj.IntValue);
+            Assert.AreEqual("Hello", obj.StrValue);
+        }
+    }
+
+    public class ImmutableClass
+    {
+        public int IntValue { get; }
+        public string StrValue { get; }
+
+        public ImmutableClass()
+        {
+            IntValue = -1;
+            StrValue = "bad";
+        }
+
+        public ImmutableClass(int intValue, string strValue)
+        {
+            IntValue = intValue;
+            StrValue = strValue;
+        }
+
+        public ImmutableClass(int intValue)
+        {
+            IntValue = intValue;
+            StrValue = "bad";
+        }
+
+        public ImmutableClass(string strValue)
+        {
+            IntValue = -1;
+            StrValue = strValue;
+        }
+
+        public static string Json()
+        {
+            return @"{""IntValue"" : 10,""StrValue"" : ""Hello""}";
+        }
+    }
+
+    public class MixedMutabilityClass
+    {
+        public int IntValue { get; }
+
+        public string StrValue { get; set; }
+
+        public MixedMutabilityClass(int intValue)
+        {
+            IntValue = intValue;
+        }
+
+        public static string Json()
+        {
+            return @"{""IntValue"" : 10,""StrValue"" : ""Hello""}";
+        }
     }
 
     public class TestClass
@@ -81,7 +151,7 @@ namespace TinyJsonSer.Tests
             return @"
 {
     ""StringProperty"" : ""TheValue"",
-    ""Int32s"" : [ 1 ,2, 3,4,-5 ], 
+    ""Int32s"" : [ 1 ,2, 3, 4, -5 ], 
     ""BoolT"" : true, 
     ""BoolF"" : false ,
     ""Child"" : null,

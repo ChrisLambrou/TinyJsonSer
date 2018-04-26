@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 
 namespace TinyJsonSer
@@ -34,10 +35,10 @@ namespace TinyJsonSer
 
         private object Deserialize(Type type, JsonValue jsonValue)
         {
-            if (jsonValue is JsonString) return DeserializeString(type, (JsonString)jsonValue);
-            if (jsonValue is JsonObject) return DeserializeObject(type, (JsonObject)jsonValue);
-            if (jsonValue is JsonArray)  return DeserializeArray(type, (JsonArray)jsonValue);
-            if (jsonValue is JsonNumber) return DeserializeNumber(type, (JsonNumber)jsonValue);
+            if (jsonValue is JsonString str) return DeserializeString(type, str);
+            if (jsonValue is JsonObject obj) return DeserializeObject(type, obj);
+            if (jsonValue is JsonArray array)  return DeserializeArray(type, array);
+            if (jsonValue is JsonNumber number) return DeserializeNumber(type, number);
             if (jsonValue is JsonNull)   return DeserializeNull(type);
             if (jsonValue is JsonTrue)   return DeserializeBoolean(type, true);
             if (jsonValue is JsonFalse)  return DeserializeBoolean(type, false);
@@ -89,7 +90,7 @@ namespace TinyJsonSer
         private object DeserializeObject(Type type, JsonObject jsonObject)
         {
             if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>)) return CreateDictionary(type, jsonObject);
-            if (type.IsClass) return CreateClass(type, jsonObject);
+            if (type.IsClass) return InstatiateObject(type, jsonObject);
 
             throw new JsonException($"Could not map {jsonObject.GetType().Name} to {type.Name}");
         }
@@ -138,13 +139,23 @@ namespace TinyJsonSer
             return DeserializeFromString(type, jsonString.Value);
         }
 
-        private object CreateClass(Type type, JsonObject jsonObject)
+        private object InstatiateObject(Type type, JsonObject jsonObject)
         {
-            var paramaterlessConstructor = type.GetConstructor(Type.EmptyTypes);
-            if (paramaterlessConstructor == null) throw new JsonException($"No paramaterless constructor found for {type.Name}");
-            var obj = Activator.CreateInstance(type);
+            var activationPlan = GetObjectActivationPlan(type, jsonObject);
 
-            foreach (var member in jsonObject.Members)
+            var ctorParams = activationPlan.ConstructorParameterMap
+                                           .Select(pair => Deserialize(pair.Type, pair.JsonValue))
+                                           .ToArray();
+
+
+            var obj = ctorParams.Any() 
+                ? Activator.CreateInstance(type, ctorParams)
+                : Activator.CreateInstance(type);
+
+            var remainingJsonMembers =
+                jsonObject.Members.Where(m => activationPlan.ConstructorParameterMap.All(pair => pair.JsonValue != m.Value));
+
+            foreach (var member in remainingJsonMembers)
             {
                 var exactProperty = type.GetProperty(member.Name, BindingFlags.Instance | BindingFlags.Public);
                 if (exactProperty != null)
@@ -179,6 +190,75 @@ namespace TinyJsonSer
             }
 
             return obj;
+        }
+
+        private ObjectActivationPlan GetObjectActivationPlan(Type type, JsonObject jsonObject)
+        {
+            var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
+
+            var settableProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                                         .Where(p => p.CanWrite)
+                                         .ToArray();
+
+            var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
+
+            var settableMemberNames = fields.Select(f => f.Name).Union(settableProperties.Select(p => p.Name))
+                                        .Select(name => name.ToLowerInvariant())
+                                        .ToArray();
+
+            var jsonMemberNamesLower = jsonObject.Members.Select(m => m.Name.ToLowerInvariant()).ToArray();
+
+            bool CanSatisfy(ConstructorInfo ctor)
+            {
+                var ctorParamNames = ctor.GetParameters().Select(p => p.Name.ToLowerInvariant()).ToArray();
+                var paramsNotInCtor = jsonMemberNamesLower.Except(ctorParamNames).ToArray();
+                return ctorParamNames.All(p => jsonMemberNamesLower.Contains(p)) &&
+                       paramsNotInCtor.All(p => settableMemberNames.Contains(p));
+            }
+
+            var constructor = constructors.Where(CanSatisfy)
+                                          .OrderByDescending(ctor => ctor.GetParameters().Length)
+                                          .FirstOrDefault();
+
+            if(constructor == null) throw new JsonException($"Could not find a suitable constructor for {type.Name}.");
+
+
+            var constructorParameterMap = constructor
+                                          .GetParameters()
+                                          .Select(p => new JsonValueWithType(jsonObject.Members.First(m => m.Name.Equals(p.Name,
+                                                                                                                         StringComparison.InvariantCultureIgnoreCase))
+                                                                                       .Value,
+                                                                             p.ParameterType))
+                                          .ToArray();
+
+
+
+            return new ObjectActivationPlan(constructor, constructorParameterMap);
+        }
+    }
+
+    internal class ObjectActivationPlan
+    {
+        public ConstructorInfo Constructor { get; }
+        public JsonValueWithType[] ConstructorParameterMap { get; }
+
+        public ObjectActivationPlan(ConstructorInfo constructor,
+                                    JsonValueWithType[] constructorParameterMap)
+        {
+            Constructor = constructor;
+            ConstructorParameterMap = constructorParameterMap;
+        }
+    }
+
+    internal class JsonValueWithType
+    {
+        internal JsonValue JsonValue { get; }
+        internal Type Type { get; }
+
+        public JsonValueWithType(JsonValue jsonValue, Type type)
+        {
+            JsonValue = jsonValue;
+            Type = type;
         }
     }
 }

@@ -297,11 +297,11 @@ namespace TinyJsonSer
 
     internal class JsonObject : JsonValue
     {
-        public IEnumerable<JsonObjectMember> Members { get; }
+        public ICollection<JsonObjectMember> Members { get; }
 
         public JsonObject(IEnumerable<JsonObjectMember> members)
         {
-            Members = members;
+            Members = members.ToArray();
         }
 
         public JsonValue this[string index]
