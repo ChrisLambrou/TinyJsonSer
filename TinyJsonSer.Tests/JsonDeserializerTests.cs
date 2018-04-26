@@ -146,6 +146,15 @@ namespace TinyJsonSer.Tests
         public int Int32 { get; set; }
         public TestClass Child { get; set; }
 
+        public TestClass()
+        {
+        }
+
+        public TestClass(string stringProperty)
+        {
+            StringProperty = stringProperty;
+        }
+
         public static string Json()
         {
             return @"

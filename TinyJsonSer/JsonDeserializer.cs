@@ -147,10 +147,7 @@ namespace TinyJsonSer
                                            .Select(pair => Deserialize(pair.Type, pair.JsonValue))
                                            .ToArray();
 
-
-            var obj = ctorParams.Any() 
-                ? Activator.CreateInstance(type, ctorParams)
-                : Activator.CreateInstance(type);
+            var obj = activationPlan.Constructor.Invoke(ctorParams);
 
             var remainingJsonMembers =
                 jsonObject.Members.Where(m => activationPlan.ConstructorParameterMap.All(pair => pair.JsonValue != m.Value));
@@ -194,6 +191,8 @@ namespace TinyJsonSer
 
         private ObjectActivationPlan GetObjectActivationPlan(Type type, JsonObject jsonObject)
         {
+            var noCase = StringComparer.InvariantCultureIgnoreCase;
+
             var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
 
             var settableProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -202,36 +201,32 @@ namespace TinyJsonSer
 
             var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
 
-            var settableMemberNames = fields.Select(f => f.Name).Union(settableProperties.Select(p => p.Name))
-                                        .Select(name => name.ToLowerInvariant())
-                                        .ToArray();
+            var settableMemberNames = fields.Union<MemberInfo>(settableProperties)
+                                            .Select(info => info.Name.ToLowerInvariant())
+                                            .ToArray();
 
-            var jsonMemberNamesLower = jsonObject.Members.Select(m => m.Name.ToLowerInvariant()).ToArray();
+            var jsonMemberNames = jsonObject.Members.Select(m => m.Name).ToArray();
 
             bool CanSatisfy(ConstructorInfo ctor)
             {
-                var ctorParamNames = ctor.GetParameters().Select(p => p.Name.ToLowerInvariant()).ToArray();
-                var paramsNotInCtor = jsonMemberNamesLower.Except(ctorParamNames).ToArray();
-                return ctorParamNames.All(p => jsonMemberNamesLower.Contains(p)) &&
-                       paramsNotInCtor.All(p => settableMemberNames.Contains(p));
+                var ctorParamNames = ctor.GetParameters().Select(p => p.Name).ToArray();
+                var paramsNotInCtor = jsonMemberNames.Except(ctorParamNames, noCase).ToArray();
+                return ctorParamNames.All(p => jsonMemberNames.Contains(p, noCase)) &&
+                       paramsNotInCtor.All(p => settableMemberNames.Contains(p, noCase));
             }
 
             var constructor = constructors.Where(CanSatisfy)
                                           .OrderByDescending(ctor => ctor.GetParameters().Length)
                                           .FirstOrDefault();
+            
+            if (constructor == null) throw new JsonException($"Could not find a suitable constructor for {type.Name}.");
 
-            if(constructor == null) throw new JsonException($"Could not find a suitable constructor for {type.Name}.");
-
-
-            var constructorParameterMap = constructor
-                                          .GetParameters()
-                                          .Select(p => new JsonValueWithType(jsonObject.Members.First(m => m.Name.Equals(p.Name,
-                                                                                                                         StringComparison.InvariantCultureIgnoreCase))
+            var constructorParameterMap = constructor.GetParameters()
+                                          .Select(p => new JsonValueWithType(jsonObject.Members
+                                                                                       .Single(m => noCase.Equals(m.Name, p.Name))
                                                                                        .Value,
                                                                              p.ParameterType))
                                           .ToArray();
-
-
 
             return new ObjectActivationPlan(constructor, constructorParameterMap);
         }
@@ -239,10 +234,10 @@ namespace TinyJsonSer
 
     internal class ObjectActivationPlan
     {
-        public ConstructorInfo Constructor { get; }
-        public JsonValueWithType[] ConstructorParameterMap { get; }
+        internal ConstructorInfo Constructor { get; }
+        internal JsonValueWithType[] ConstructorParameterMap { get; }
 
-        public ObjectActivationPlan(ConstructorInfo constructor,
+        internal ObjectActivationPlan(ConstructorInfo constructor,
                                     JsonValueWithType[] constructorParameterMap)
         {
             Constructor = constructor;
@@ -255,7 +250,7 @@ namespace TinyJsonSer
         internal JsonValue JsonValue { get; }
         internal Type Type { get; }
 
-        public JsonValueWithType(JsonValue jsonValue, Type type)
+        internal JsonValueWithType(JsonValue jsonValue, Type type)
         {
             JsonValue = jsonValue;
             Type = type;

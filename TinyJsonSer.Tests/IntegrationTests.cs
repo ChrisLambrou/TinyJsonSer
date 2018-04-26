@@ -15,6 +15,7 @@ namespace TinyJsonSer.Tests
 
             var testClass = new TestClass
             {
+                StringProperty = "allo",
                 BoolF = false,
                 BoolT = true,
                 Child = new TestClass { Int32 = 30, Int32s = new[] { 1, -2, 3, -4, 5 } },
@@ -26,6 +27,7 @@ namespace TinyJsonSer.Tests
             using (var reader = new StreamReader(memStream, Encoding.UTF8))
             {
                 var returned = deserialiser.Deserialize<TestClass>(reader);
+                Assert.AreEqual(testClass.StringProperty, returned.StringProperty);
                 Assert.AreEqual(testClass.BoolF, returned.BoolF);
                 Assert.AreEqual(testClass.BoolT, returned.BoolT);
                 Assert.AreEqual(6, returned.StringCounts["bl𝒜h"]);
